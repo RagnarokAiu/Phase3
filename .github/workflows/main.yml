@@ -232,4 +232,3 @@ jobs:
         echo "Backend services deployed to: ${{ secrets.APP_NODE_IPS }}"
         echo "Frontend deployed to: ${{ secrets.NGINX_HOST }}"
         echo "Access the application at: http://${{ secrets.NGINX_HOST }}"
-#
