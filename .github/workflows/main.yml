@@ -89,3 +89,146 @@ jobs:
           # Return to root
           cd -
         done
+
+  deploy:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get ECR Registry
+      id: ecr
+      run: |
+        echo "registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com" >> $GITHUB_OUTPUT
+
+    - name: Setup SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H ${{ secrets.BASTION_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+    - name: Deploy to App Nodes
+      env:
+        ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        ECR_PREFIX: ${{ env.ECR_REPOSITORY_PREFIX }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        KAFKA_BROKERS: ${{ secrets.KAFKA_BROKERS }}
+      run: |
+        # Deploy to each App Node via Bastion
+        for APP_IP in $(echo "${{ secrets.APP_NODE_IPS }}" | tr ',' ' '); do
+          echo "Deploying to $APP_IP..."
+          
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+              -o ProxyCommand="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -W %h:%p ubuntu@${{ secrets.BASTION_HOST }}" \
+              ubuntu@$APP_IP << REMOTE_SCRIPT
+        
+        # Login to ECR
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+        
+        # Create deployment directory
+        mkdir -p /opt/cloud-platform/services
+        cd /opt/cloud-platform/services
+        
+        # Create docker-compose.yml
+        cat > docker-compose.yml << 'COMPOSE'
+        version: '3.8'
+        services:
+          document-service:
+            image: ${ECR_REGISTRY}/${ECR_PREFIX}-document-service:latest
+            ports:
+              - "8000:8000"
+            environment:
+              - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/cloud_learning
+              - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS}
+            restart: always
+          
+          tts-service:
+            image: ${ECR_REGISTRY}/${ECR_PREFIX}-tts-service:latest
+            ports:
+              - "8001:8000"
+            environment:
+              - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/cloud_learning
+              - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS}
+            restart: always
+          
+          stt-service:
+            image: ${ECR_REGISTRY}/${ECR_PREFIX}-stt-service:latest
+            ports:
+              - "8002:8000"
+            environment:
+              - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/cloud_learning
+              - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS}
+            restart: always
+          
+          chat-service:
+            image: ${ECR_REGISTRY}/${ECR_PREFIX}-chat-service:latest
+            ports:
+              - "8003:8000"
+            environment:
+              - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/cloud_learning
+              - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS}
+            restart: always
+          
+          quiz-service:
+            image: ${ECR_REGISTRY}/${ECR_PREFIX}-quiz-service:latest
+            ports:
+              - "8004:8000"
+            environment:
+              - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/cloud_learning
+              - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS}
+            restart: always
+          
+          user-service:
+            image: ${ECR_REGISTRY}/${ECR_PREFIX}-user-service:latest
+            ports:
+              - "8005:8000"
+            environment:
+              - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/cloud_learning
+              - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS}
+            restart: always
+        COMPOSE
+        
+        # Pull latest images and restart
+        docker-compose pull
+        docker-compose up -d
+        
+        echo "Deployment to $APP_IP complete!"
+        REMOTE_SCRIPT
+        done
+
+    - name: Deploy Frontend to Nginx
+      run: |
+        echo "Deploying frontend to Nginx instance..."
+        
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.NGINX_HOST }} << 'FRONTEND_SCRIPT'
+        
+        # Login to ECR
+        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ steps.ecr.outputs.registry }}
+        
+        # Pull and run frontend container
+        docker pull ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_PREFIX }}-frontend-web:latest
+        docker stop frontend || true
+        docker rm frontend || true
+        docker run -d --name frontend -p 3000:80 ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_PREFIX }}-frontend-web:latest
+        
+        echo "Frontend deployed!"
+        FRONTEND_SCRIPT
+
+    - name: Deployment Summary
+      run: |
+        echo "✅ Deployment Complete!"
+        echo "Backend services deployed to: ${{ secrets.APP_NODE_IPS }}"
+        echo "Frontend deployed to: ${{ secrets.NGINX_HOST }}"
+        echo "Access the application at: http://${{ secrets.NGINX_HOST }}"
