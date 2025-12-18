@@ -1,0 +1,18 @@
+#! kustomization.yaml
+# Generated code, do not edit
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+    - ../../base
+patches:
+    - path: chat-service-service.yaml
+    - path: db-postgres_data-persistentVolumeClaim.yaml
+    - path: db-service.yaml
+    - path: document-service-service.yaml
+    - path: frontend-service.yaml
+    - path: kafka-service.yaml
+    - path: quiz-service-service.yaml
+    - path: stt-service-service.yaml
+    - path: tts-service-service.yaml
+    - path: user-service-service.yaml
+    - path: zookeeper-service.yaml

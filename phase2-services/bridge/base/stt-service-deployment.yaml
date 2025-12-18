@@ -1,0 +1,37 @@
+#! stt-service-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: stt-service
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: stt-service
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: phase2-services
+            com.docker.compose.service: stt-service
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: phase2-services
+                com.docker.compose.service: stt-service
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: stt-service
+                  image: phase2-services-stt-service
+                  imagePullPolicy: IfNotPresent
+                  env:
+                    - name: DATABASE_URL
+                      value: "postgresql://dbadmin:password@db:5432/cloud_learning"
+                    - name: KAFKA_BOOTSTRAP_SERVERS
+                      value: "kafka:29092"
+                  ports:
+                    - name: stt-servic-8000
+                      containerPort: 8000

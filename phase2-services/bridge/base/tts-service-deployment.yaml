@@ -1,0 +1,37 @@
+#! tts-service-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: tts-service
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: tts-service
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: phase2-services
+            com.docker.compose.service: tts-service
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: phase2-services
+                com.docker.compose.service: tts-service
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: tts-service
+                  image: phase2-services-tts-service
+                  imagePullPolicy: IfNotPresent
+                  env:
+                    - name: DATABASE_URL
+                      value: "postgresql://dbadmin:password@db:5432/cloud_learning"
+                    - name: KAFKA_BOOTSTRAP_SERVERS
+                      value: "kafka:29092"
+                  ports:
+                    - name: tts-servic-8000
+                      containerPort: 8000

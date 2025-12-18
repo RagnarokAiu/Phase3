@@ -1,0 +1,37 @@
+#! user-service-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: user-service
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: user-service
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: phase2-services
+            com.docker.compose.service: user-service
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: phase2-services
+                com.docker.compose.service: user-service
+                com.docker.compose.network.default: "true"
+        spec:
+            containers:
+                - name: user-service
+                  image: phase2-services-user-service
+                  imagePullPolicy: IfNotPresent
+                  env:
+                    - name: DATABASE_URL
+                      value: "postgresql://dbadmin:password@db:5432/cloud_learning"
+                    - name: KAFKA_BOOTSTRAP_SERVERS
+                      value: "kafka:29092"
+                  ports:
+                    - name: user-servi-8000
+                      containerPort: 8000

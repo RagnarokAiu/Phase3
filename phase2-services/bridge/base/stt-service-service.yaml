@@ -1,0 +1,21 @@
+#! stt-service-service.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: stt-service-published
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: stt-service
+spec:
+    selector:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: stt-service
+    ports:
+        - name: stt-servic-8005
+          port: 8005
+          protocol: TCP
+          targetPort: stt-servic-8000
+
+# check if there is at least one published port

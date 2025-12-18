@@ -1,0 +1,44 @@
+graph TD
+    User[User] -->|HTTPS| WAF[AWS WAF]
+    WAF -->|Allow| ALB[Application LoadBalancer]
+    
+    subgraph VPC [AWS VPC]
+        subgraph Public Subnet
+            ALB
+            Bastion[Bastion Host]
+        end
+        
+        subgraph Private Subnet
+            subgraph App Nodes [EC2 App Nodes / ECS]
+                DocService[Document Service]
+                TTSService[TTS Service]
+                STTService[STT Service]
+                ChatService[Chat Service]
+                QuizService[Quiz Service]
+                UserService[User Service]
+                Frontend[Frontend Web]
+            end
+            
+            subgraph Data Layer
+                RDS[(RDS Postgres)]
+                S3[(S3 Buckets)]
+            end
+        end
+    end
+    
+    ALB -->|/api/documents| DocService
+    ALB -->|/api/tts| TTSService
+    ALB -->|/api/stt| STTService
+    ALB -->|/api/chat| ChatService
+    ALB -->|/api/quiz| QuizService
+    ALB -->|/api/users| UserService
+    ALB -->|/*| Frontend
+
+    DocService --> RDS
+    DocService --> S3
+    
+    ChatService --> RDS
+    ChatService --> S3
+    
+    QuizService --> RDS
+    QuizService --> S3
