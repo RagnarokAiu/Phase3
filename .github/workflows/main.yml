@@ -202,6 +202,12 @@ jobs:
               - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/cloud_learning
               - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BROKERS}
             restart: always
+          
+          frontend-web:
+            image: ${ECR_REGISTRY}/${ECR_PREFIX}-frontend-web:latest
+            ports:
+              - "3000:80"
+            restart: always
         COMPOSE_END
         
         # Substitute environment variables in docker-compose.yml
@@ -220,11 +226,155 @@ jobs:
         EOF
         done
 
+    - name: Update Nginx Config for Frontend
+      run: |
+        echo "Updating Nginx configuration to serve frontend..."
+        
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.NGINX_HOST }} << 'NGINX_SCRIPT'
+        
+        # Get all app node IPs for upstream configuration
+        APP_IPS="${{ secrets.APP_NODE_IPS }}"
+        
+        # Create new Nginx configuration with frontend proxy
+        sudo tee /etc/nginx/sites-available/cloud-platform > /dev/null << 'NGINX_CONFIG'
+        # Frontend upstream (load balanced across all app nodes)
+        upstream frontend {
+            server 10.0.10.10:3000;
+            server 10.0.11.11:3000;
+            server 10.0.10.12:3000;
+        }
+        
+        # Backend service upstreams (load balanced)
+        upstream document_service {
+            server 10.0.10.10:8000;
+            server 10.0.11.11:8000;
+            server 10.0.10.12:8000;
+        }
+        
+        upstream tts_service {
+            server 10.0.10.10:8001;
+            server 10.0.11.11:8001;
+            server 10.0.10.12:8001;
+        }
+        
+        upstream stt_service {
+            server 10.0.10.10:8002;
+            server 10.0.11.11:8002;
+            server 10.0.10.12:8002;
+        }
+        
+        upstream chat_service {
+            server 10.0.10.10:8003;
+            server 10.0.11.11:8003;
+            server 10.0.10.12:8003;
+        }
+        
+        upstream quiz_service {
+            server 10.0.10.10:8004;
+            server 10.0.11.11:8004;
+            server 10.0.10.12:8004;
+        }
+        
+        upstream user_service {
+            server 10.0.10.10:8005;
+            server 10.0.11.11:8005;
+            server 10.0.10.12:8005;
+        }
+        
+        server {
+            listen 80;
+            server_name _;
+            
+            # Frontend - serve the React app
+            location / {
+                proxy_pass http://frontend;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host $host;
+                proxy_cache_bypass $http_upgrade;
+            }
+            
+            # Document Service API
+            location /api/documents {
+                proxy_pass http://document_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            # TTS Service API
+            location /api/tts {
+                proxy_pass http://tts_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            # STT Service API
+            location /api/stt {
+                proxy_pass http://stt_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            # Chat Service API
+            location /api/chat {
+                proxy_pass http://chat_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            # Quiz Service API
+            location /api/quiz {
+                proxy_pass http://quiz_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            # User Service API
+            location /api/users {
+                proxy_pass http://user_service;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            # Health check endpoint
+            location /health {
+                return 200 '{"status": "healthy", "service": "nginx-gateway"}';
+                add_header Content-Type application/json;
+            }
+        }
+        NGINX_CONFIG
+        
+        # Test and reload Nginx
+        sudo nginx -t && sudo systemctl reload nginx
+        
+        echo "Nginx configuration updated!"
+        NGINX_SCRIPT
+
     - name: Deployment Summary
       run: |
         echo "✅ Deployment Complete!"
-        echo "Backend services deployed to: ${{ secrets.APP_NODE_IPS }}"
         echo ""
-        echo "Access the application via Nginx at: http://${{ secrets.NGINX_HOST }}"
-        echo "Note: Nginx is configured as a reverse proxy to route /api/* to the backend services."
+        echo "Backend services deployed to: ${{ secrets.APP_NODE_IPS }}"
+        echo "Frontend deployed to all App Nodes on port 3000"
+        echo ""
+        echo "🌐 Access your application at: http://${{ secrets.NGINX_HOST }}"
+        echo ""
+        echo "Architecture:"
+        echo "  User → Nginx (Load Balancer) → Frontend Container (port 3000)"
+        echo "                              → Backend APIs (ports 8000-8005)"
+        echo "                              → Kafka Cluster → Event Streaming"
+
 
