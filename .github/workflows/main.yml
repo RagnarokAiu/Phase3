@@ -206,7 +206,7 @@ jobs:
           frontend-web:
             image: ${ECR_REGISTRY}/${ECR_PREFIX}-frontend-web:latest
             ports:
-              - "3000:80"
+              - "8006:80"
             restart: always
         COMPOSE_END
         
@@ -248,9 +248,9 @@ jobs:
         sudo tee /etc/nginx/sites-available/cloud-platform > /dev/null << 'NGINX_CONFIG'
         # Frontend upstream (load balanced across all app nodes)
         upstream frontend {
-            server 10.0.10.10:3000;
-            server 10.0.11.11:3000;
-            server 10.0.10.12:3000;
+            server 10.0.10.10:8006;
+            server 10.0.11.11:8006;
+            server 10.0.10.12:8006;
         }
         
         # Backend service upstreams (load balanced)
