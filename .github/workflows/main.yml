@@ -219,8 +219,17 @@ jobs:
         sed -i "s|\\\${KAFKA_BROKERS}|${KAFKA_BROKERS}|g" docker-compose.yml
         
         # Pull latest images and restart
-        docker-compose pull
-        docker-compose up -d
+        # Stop and remove old containers to avoid ContainerConfig error
+        docker compose down --remove-orphans 2>/dev/null || docker-compose down --remove-orphans 2>/dev/null || true
+        
+        # Use docker compose v2 (falls back to v1 if needed)
+        if command -v docker compose &> /dev/null; then
+          docker compose pull
+          docker compose up -d
+        else
+          docker-compose pull
+          docker-compose up -d
+        fi
         
         echo "Deployment to $APP_IP complete!"
         EOF

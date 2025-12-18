@@ -43,3 +43,7 @@ venv.bak/
 .vscode/
 *.swp
 *.swo
+
+aws_credentials
+outputs.json
+*.pem
