@@ -4,21 +4,43 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 from typing import List
+import os
+import json
 
-# Database Imports (Mocking session for now if DB setup is complex, but using SQLAlchemy structure)
+# Kafka Setup
+try:
+    from kafka import KafkaProducer
+except ImportError:
+    KafkaProducer = None
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+producer = None
+
+if KafkaProducer:
+    try:
+        producer = KafkaProducer(
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        )
+        print(f"Kafka producer connected to {KAFKA_BOOTSTRAP_SERVERS}")
+    except Exception as e:
+        print(f"Warning: Kafka connection failed: {e}")
+
+# Database Imports
 from src.core.security import create_access_token, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 from src.models.user import User, Base
 from src.schemas.user import UserCreate, UserLogin, Token, User as UserSchema
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# -- Database Setup (Using SQLite for ease of use/portability within the container if Postgres is down, but ideally connecting to DB) --
-# For this task, I will use SQLite to ensure it works IMMEDIATELY for the user without relying on the broken Docker Postgres
-SQLALCHEMY_DATABASE_URL = "sqlite:///./users_v2.db"
+# Database Setup - Uses DATABASE_URL from environment for AWS RDS
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users_fallback.db")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+if DATABASE_URL.startswith("postgresql"):
+    engine = create_engine(DATABASE_URL)
+else:
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
@@ -30,6 +52,7 @@ def get_db():
     finally:
         db.close()
 # --------------------------------------------------------------------------------------------------------------------------------------
+
 
 app = FastAPI(title="User Service", version="1.0.0")
 

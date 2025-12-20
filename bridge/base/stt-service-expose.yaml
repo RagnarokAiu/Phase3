@@ -1,0 +1,18 @@
+#! stt-service-expose.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: stt-service
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: stt-service
+spec:
+    selector:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: stt-service
+    ports:
+        - name: stt-servic-8000
+          port: 8000
+          targetPort: stt-servic-8000

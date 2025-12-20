@@ -1,0 +1,21 @@
+#! tts-service-service.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: tts-service-published
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: tts-service
+spec:
+    selector:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: tts-service
+    ports:
+        - name: tts-servic-8006
+          port: 8006
+          protocol: TCP
+          targetPort: tts-servic-8000
+
+# check if there is at least one published port

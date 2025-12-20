@@ -1,0 +1,18 @@
+#! chat-service-expose.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: chat-service
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: chat-service
+spec:
+    selector:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: chat-service
+    ports:
+        - name: chat-servi-8000
+          port: 8000
+          targetPort: chat-servi-8000

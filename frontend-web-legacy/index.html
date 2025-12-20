@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Learning Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Cloud Learning Platform</h1>
+            <p>Welcome to the learning portal.</p>
+        </header>
+        <main>
+            <div class="status-grid">
+                <div class="card" id="user-service">
+                    <h3>User Service</h3>
+                    <p class="status">Checking...</p>
+                </div>
+                <div class="card" id="chat-service">
+                    <h3>Chat Service</h3>
+                    <p class="status">Checking...</p>
+                </div>
+                <div class="card" id="doc-service">
+                    <h3>Document Service</h3>
+                    <p class="status">Checking...</p>
+                    <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                        <h4>Upload Document</h4>
+                        <input type="file" id="doc-upload" style="margin-bottom: 10px;">
+                        <button onclick="uploadDocument()"
+                            style="background: #007bff; color: white; border: none; padding: 5px 10px; cursor: pointer;">Upload</button>
+                        <p id="upload-status" style="font-size: 0.8em; margin-top: 5px;"></p>
+                    </div>
+                </div>
+                <div class="card" id="quiz-service">
+                    <h3>Quiz Service</h3>
+                    <p class="status">Checking...</p>
+                </div>
+                <div class="card" id="stt-service">
+                    <h3>STT Service</h3>
+                    <p class="status">Checking...</p>
+                </div>
+                <div class="card" id="tts-service">
+                    <h3>TTS Service</h3>
+                    <p class="status">Checking...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js/main.js"></script>
+</body>
+
+</html>

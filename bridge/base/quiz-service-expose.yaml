@@ -1,0 +1,18 @@
+#! quiz-service-expose.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: quiz-service
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: quiz-service
+spec:
+    selector:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: quiz-service
+    ports:
+        - name: quiz-servi-8000
+          port: 8000
+          targetPort: quiz-servi-8000

@@ -1,0 +1,23 @@
+# check if there is at least one published port
+
+#! chat-service-service.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: chat-service-published
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: chat-service
+spec:
+    selector:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: chat-service
+    ports:
+        - name: chat-servi-8002
+          port: 8002
+          protocol: TCP
+          targetPort: chat-servi-8000
+
+# check if there is at least one published port

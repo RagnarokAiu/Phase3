@@ -1,0 +1,18 @@
+#! tts-service-expose.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Service
+metadata:
+    name: tts-service
+    namespace: phase2-services
+    labels:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: tts-service
+spec:
+    selector:
+        com.docker.compose.project: phase2-services
+        com.docker.compose.service: tts-service
+    ports:
+        - name: tts-servic-8000
+          port: 8000
+          targetPort: tts-servic-8000
