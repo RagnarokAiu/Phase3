@@ -120,6 +120,39 @@ jobs:
         tar -czvf frontend-dist.tar.gz -C dist .
         mv frontend-dist.tar.gz $GITHUB_WORKSPACE/
 
+    - name: Initialize Database
+      env:
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        BASTION_HOST: ${{ secrets.BASTION_HOST }}
+        APP_NODE_IPS: ${{ secrets.APP_NODE_IPS }}
+      run: |
+        echo "========================================"
+        echo "Initializing Database"
+        echo "========================================"
+        
+        # Get first App Node IP
+        FIRST_APP_IP=$(echo "$APP_NODE_IPS" | tr ',' ' ' | awk '{print $1}')
+        
+        # Create database if it doesn't exist (via App Node which has RDS access)
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            -o ProxyCommand="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -W %h:%p ubuntu@${BASTION_HOST}" \
+            ubuntu@${FIRST_APP_IP} << INIT_SCRIPT
+        # Install postgresql client if not present
+        which psql || sudo apt-get update && sudo apt-get install -y postgresql-client
+        
+        # Check if database exists, create if not
+        export PGPASSWORD="${DB_PASSWORD}"
+        if ! psql -h ${DB_HOST} -U ${DB_USER} -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='cloud_learning'" | grep -q 1; then
+          echo "Creating database cloud_learning..."
+          psql -h ${DB_HOST} -U ${DB_USER} -d postgres -c "CREATE DATABASE cloud_learning;"
+          echo "Database created successfully!"
+        else
+          echo "Database cloud_learning already exists."
+        fi
+        INIT_SCRIPT
+
     - name: Create Docker Compose File
       run: |
         cat > docker-compose-template.yml << 'COMPOSE_EOF'
@@ -213,48 +246,48 @@ jobs:
             server_name _;
             root /var/www/html;
             index index.html;
-            location /api/documents {
-                proxy_pass http://document_service;
+            location /api/documents/ {
+                proxy_pass http://document_service/;
                 proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
-            location /api/tts {
-                proxy_pass http://tts_service;
+            location /api/tts/ {
+                proxy_pass http://tts_service/;
                 proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
-            location /api/stt {
-                proxy_pass http://stt_service;
+            location /api/stt/ {
+                proxy_pass http://stt_service/;
                 proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
-            location /api/chat {
-                proxy_pass http://chat_service;
+            location /api/chat/ {
+                proxy_pass http://chat_service/;
                 proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
-            location /api/quiz {
-                proxy_pass http://quiz_service;
+            location /api/quiz/ {
+                proxy_pass http://quiz_service/;
                 proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
-            location /api/users {
-                proxy_pass http://user_service;
+            location /api/users/ {
+                proxy_pass http://user_service/;
                 proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
